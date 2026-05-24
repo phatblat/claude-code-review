@@ -27203,26 +27203,46 @@ async function main() {
   core3.setOutput("nit", String(result.summary.nit));
 }
 function extractResultText(raw) {
+  let text = raw;
   try {
     const messages = JSON.parse(raw);
-    if (!Array.isArray(messages)) return raw;
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const msg = messages[i];
-      if (msg.type === "result" && typeof msg.result === "string") {
-        return msg.result;
+    if (Array.isArray(messages)) {
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const msg = messages[i];
+        if (msg.type === "result" && typeof msg.result === "string") {
+          text = msg.result;
+          break;
+        }
       }
-    }
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const msg = messages[i];
-      if (msg.type === "assistant" && Array.isArray(msg.message?.content)) {
-        for (const block of msg.message.content) {
-          if (block.type === "text") return block.text;
+      if (text === raw) {
+        for (let i = messages.length - 1; i >= 0; i--) {
+          const msg = messages[i];
+          if (msg.type === "assistant" && Array.isArray(msg.message?.content)) {
+            for (const block of msg.message.content) {
+              if (block.type === "text") {
+                text = block.text;
+                break;
+              }
+            }
+            if (text !== raw) break;
+          }
         }
       }
     }
   } catch {
   }
-  return raw;
+  return extractJsonArray(text);
+}
+function extractJsonArray(text) {
+  const start = text.indexOf("[");
+  if (start === -1) return text;
+  let depth = 0;
+  for (let i = start; i < text.length; i++) {
+    if (text[i] === "[") depth++;
+    else if (text[i] === "]") depth--;
+    if (depth === 0) return text.slice(start, i + 1);
+  }
+  return text.slice(start);
 }
 function required(name) {
   const v = process.env[name];
