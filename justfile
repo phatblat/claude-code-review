@@ -9,7 +9,10 @@ _default:
     just --list
 
 # Install dependencies
+[script]
 deps:
+    set -euo pipefail
+    mise install
     npm install
 
 # Run test suite
