@@ -17,10 +17,21 @@ async function main(): Promise<void> {
   const octokit = github.getOctokit(token);
 
   // Need the head SHA to anchor inline comments.
-  const pr = await octokit.rest.pulls.get({ owner, repo, pull_number: prNumber });
+  const pr = await octokit.rest.pulls.get({
+    owner,
+    repo,
+    pull_number: prNumber,
+  });
   const headSha = pr.data.head.sha;
+  const prAuthor = pr.data.user?.login ?? "";
 
-  const port = new OctokitGitHubPort(octokit, { owner, repo, prNumber, headSha });
+  const port = new OctokitGitHubPort(octokit, {
+    owner,
+    repo,
+    prNumber,
+    headSha,
+    prAuthor,
+  });
 
   const result = await executeReview(port, {
     verifierStdout,
@@ -29,11 +40,13 @@ async function main(): Promise<void> {
   });
 
   if (result.parseErrors.length > 0) {
-    core.warning(`verifier output had ${result.parseErrors.length} unparseable record(s).`);
+    core.warning(
+      `verifier output had ${result.parseErrors.length} unparseable record(s).`
+    );
   }
   core.info(
     `created=${result.created} updated=${result.updated} resolved=${result.resolved} ` +
-      `suppressed=${result.suppressed} not-inlineable=${result.notInlineable}`,
+      `suppressed=${result.suppressed} not-inlineable=${result.notInlineable}`
   );
   core.setOutput("important", String(result.summary.important));
   core.setOutput("nit", String(result.summary.nit));
@@ -45,4 +58,6 @@ function required(name: string): string {
   return v;
 }
 
-main().catch((err) => core.setFailed(err instanceof Error ? err.message : String(err)));
+main().catch((err) =>
+  core.setFailed(err instanceof Error ? err.message : String(err))
+);

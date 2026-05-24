@@ -1,6 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { embedMarker, parseMarker, isSummaryComment, SUMMARY_MARKER } from "../src/github/marker.js";
-import { renderCommentBody, renderSummary } from "../src/github/comment-format.js";
+import {
+  embedMarker,
+  parseMarker,
+  isSummaryComment,
+  SUMMARY_MARKER,
+} from "../src/github/marker.js";
+import {
+  renderCommentBody,
+  renderSummary,
+} from "../src/github/comment-format.js";
 import { toReviewComment, canPostInline } from "../src/github/payload.js";
 import { derivePriorComments } from "../src/github/prior-state.js";
 import { parsePolicy, parseSkipGlobs } from "../src/config.js";
@@ -48,19 +56,29 @@ describe("renderCommentBody", () => {
     expect(parseMarker(body)).toBe("abcd1234");
   });
   it("renders a suggestion block only when a suggestion is present", () => {
-    expect(renderCommentBody(pf({ suggestion: null }))).not.toContain("```suggestion");
+    expect(renderCommentBody(pf({ suggestion: null }))).not.toContain(
+      "```suggestion"
+    );
     const withFix = renderCommentBody(pf({ suggestion: "if (!user) return;" }));
     expect(withFix).toContain("```suggestion");
     expect(withFix).toContain("if (!user) return;");
   });
   it("treats an empty-string suggestion as no suggestion", () => {
-    expect(renderCommentBody(pf({ suggestion: "" }))).not.toContain("```suggestion");
+    expect(renderCommentBody(pf({ suggestion: "" }))).not.toContain(
+      "```suggestion"
+    );
   });
 });
 
 describe("renderSummary", () => {
   it("shows tallies and the nit overflow", () => {
-    const summary = { important: 2, nit: 5, preExisting: 1, droppedByThreshold: 3, rejected: 4 };
+    const summary = {
+      important: 2,
+      nit: 5,
+      preExisting: 1,
+      droppedByThreshold: 3,
+      rejected: 4,
+    };
     const text = renderSummary(summary, 7);
     expect(text).toContain(SUMMARY_MARKER);
     expect(text).toContain("Important: **2**");
@@ -83,14 +101,14 @@ describe("payload", () => {
 
 describe("derivePriorComments", () => {
   it("ignores comments without our marker", () => {
-    const comments = [{ id: 1, body: "a human comment" }];
+    const comments = [{ id: 1, nodeId: "n1", body: "a human comment" }];
     expect(derivePriorComments(comments, new Set(), new Set())).toEqual([]);
   });
   it("classifies open / resolved / dismissed", () => {
     const comments = [
-      { id: 1, body: embedMarker("aaa") },
-      { id: 2, body: embedMarker("bbb") },
-      { id: 3, body: embedMarker("ccc") },
+      { id: 1, nodeId: "n1", body: embedMarker("aaa") },
+      { id: 2, nodeId: "n2", body: embedMarker("bbb") },
+      { id: 3, nodeId: "n3", body: embedMarker("ccc") },
     ];
     const prior = derivePriorComments(comments, new Set([3]), new Set([2]));
     expect(prior).toEqual([
@@ -100,7 +118,7 @@ describe("derivePriorComments", () => {
     ]);
   });
   it("lets dismissal win over resolution", () => {
-    const comments = [{ id: 9, body: embedMarker("abcabc") }];
+    const comments = [{ id: 9, nodeId: "n9", body: embedMarker("abcabc") }];
     const prior = derivePriorComments(comments, new Set([9]), new Set([9]));
     expect(prior[0].state).toBe("dismissed");
   });
@@ -123,7 +141,10 @@ describe("config", () => {
     expect(cfg.maxNits).toBe(3);
   });
   it("parses comma-separated skip globs", () => {
-    expect(parseSkipGlobs(" src/gen/** , **/*.lock ")).toEqual(["src/gen/**", "**/*.lock"]);
+    expect(parseSkipGlobs(" src/gen/** , **/*.lock ")).toEqual([
+      "src/gen/**",
+      "**/*.lock",
+    ]);
     expect(parseSkipGlobs(undefined)).toEqual([]);
   });
 });

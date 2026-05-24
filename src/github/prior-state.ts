@@ -10,13 +10,14 @@ import type { PriorComment } from "../types.js";
 
 export interface RawComment {
   id: number;
+  nodeId: string;
   body: string;
 }
 
 export function derivePriorComments(
   comments: RawComment[],
   downvotedIds: Set<number>,
-  resolvedIds: Set<number>,
+  resolvedIds: Set<number>
 ): PriorComment[] {
   const out: PriorComment[] = [];
   for (const c of comments) {

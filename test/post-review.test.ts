@@ -20,7 +20,7 @@ class FakeGitHubPort implements GitHubPort {
   constructor(
     private readonly comments: RawComment[] = [],
     private readonly downvoted: Set<number> = new Set(),
-    private readonly resolvedThreads: Set<number> = new Set(),
+    private readonly resolvedThreads: Set<number> = new Set()
   ) {}
 
   async getPrFiles() {
@@ -70,11 +70,11 @@ describe("executeReview", () => {
 
     const port = new FakeGitHubPort(
       [
-        { id: 12, body: `old\n${embedMarker(fpDismiss)}` }, // dismissed below
-        { id: 13, body: `old\n${embedMarker(fpGone)}` }, // open, not in this run -> resolve
+        { id: 12, nodeId: "n12", body: `old\n${embedMarker(fpDismiss)}` }, // dismissed below
+        { id: 13, nodeId: "n13", body: `old\n${embedMarker(fpGone)}` }, // open, not in this run -> resolve
       ],
       new Set([12]), // 12 was 👎'd
-      new Set(), // none resolved yet
+      new Set() // none resolved yet
     );
 
     const verifier = JSON.stringify([
@@ -87,7 +87,11 @@ describe("executeReview", () => {
 
     // One created (the new in-diff finding), with a line+side RIGHT payload.
     expect(port.created).toHaveLength(1);
-    expect(port.created[0]).toMatchObject({ path: "app.ts", line: 2, side: "RIGHT" });
+    expect(port.created[0]).toMatchObject({
+      path: "app.ts",
+      line: 2,
+      side: "RIGHT",
+    });
 
     // The dismissed finding was suppressed, not posted.
     expect(result.suppressed).toBe(1);
@@ -104,13 +108,19 @@ describe("executeReview", () => {
 
   it("updates instead of duplicating when a finding recurs", async () => {
     const fp = fingerprint("app.ts", "logic", "E-recurring");
-    const port = new FakeGitHubPort([{ id: 42, body: embedMarker(fp) }], new Set(), new Set());
+    const port = new FakeGitHubPort(
+      [{ id: 42, nodeId: "n42", body: embedMarker(fp) }],
+      new Set(),
+      new Set()
+    );
 
     const verifier = JSON.stringify([finding("app.ts", 2, "E-recurring")]);
     const result = await executeReview(port, { verifierStdout: verifier });
 
     expect(port.created).toHaveLength(0);
-    expect(port.updated).toEqual([{ id: 42, body: expect.stringContaining("E-recurring") }]);
+    expect(port.updated).toEqual([
+      { id: 42, body: expect.stringContaining("E-recurring") },
+    ]);
     expect(result.updated).toBe(1);
   });
 });
