@@ -97,16 +97,56 @@ Deterministic, testable, no prompt changes needed:
 Raise the nit threshold or lower `maxNits` if reviews feel chatty. Lower the
 important threshold if real bugs are slipping through.
 
+### Config file
+
+Drop a `.github/claude-code-review.yml` in your repo to set defaults without
+changing the workflow:
+
+```yaml
+thresholds:
+  important: 0.6
+  nit: 0.9
+max_nits: 3
+post_pre_existing: false
+skip_globs:
+  - "src/gen/**"
+  - "**/*.lock"
+  - "vendor/**"
+```
+
+Action inputs override config file values; config file values override defaults.
+
+## Fork safety
+
+The example workflow uses `pull_request` (not `pull_request_target`), which
+means forked PRs **cannot access your secrets**. This is the safe default.
+
+If you switch to `pull_request_target` to allow reviews on fork PRs, be aware
+that the PR's code runs with access to your repository secrets. Only do this
+if you understand the implications — see GitHub's
+[security hardening guide](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#understanding-the-risk-of-script-injections).
+
+Other safety defaults:
+- **Permissions**: `contents: read`, `pull-requests: write` — least privilege
+- **Draft PRs**: Skipped (`if: github.event.pull_request.draft == false`)
+- **Binary files**: Handled gracefully — files without a patch are skipped
+  for inline comments and reflected only in the summary
+- **Large diffs**: The pipeline processes whatever the GitHub API returns;
+  findings on lines outside the diff are filtered out, not errored
+
 ## Development
 
 ```bash
 just deps       # mise install + npm install
-just test       # vitest — 40 tests, ~2s, no network
+just test       # vitest — 67 tests, ~2s, no network
 just typecheck  # tsc --noEmit (strict mode)
 just lint       # static checks
 just check      # lint + tests
+just eval       # run eval harness against labeled fixtures
+just build      # esbuild → dist/main.js
 ```
 
+```bash
 See [DESIGN.md](./DESIGN.md) for the full architecture and the prompt/code
 boundary table.
 
