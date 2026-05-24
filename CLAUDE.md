@@ -83,7 +83,7 @@ All build milestones are complete (see `AGENT_HANDOFF.md` for original plan):
 - **M6** (CI/release) — CI workflow (typecheck+test+build+eval), release workflow (v* tags → dist + v1 tag)
 - **M7** (fork safety) — `pull_request` default, documented `pull_request_target` risks, binary file handling
 
-Remaining: verify `claude-code-action` `execution_output` field name against live docs (§5A in AGENT_HANDOFF.md).
+All verification items resolved. §5A: the correct output field is `execution_file` (file path), not `execution_output`.
 
 ## Design Reference
 
