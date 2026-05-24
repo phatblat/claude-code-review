@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  id-token: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   review:
@@ -24,3 +28,4 @@ jobs:
           skip_globs: "src/gen/**,**/*.lock,vendor/**"
           nit_threshold: "0.85"
           max_nits: "5"
+          show_full_output: "true"
