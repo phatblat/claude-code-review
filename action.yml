@@ -115,7 +115,12 @@ runs:
           --max-turns 8
           --allowedTools "Read,Grep,Glob"
 
-    # 3) Combine candidates from both reviewers
+    # 3) Build the posting layer (dist/ is gitignored)
+    - id: build
+      shell: bash
+      run: cd ${{ github.action_path }} && npm ci --ignore-scripts && npm run build
+
+    # 4) Combine candidates from both reviewers
     - id: combine
       shell: bash
       run: node ${{ github.action_path }}/dist/main.cjs --extract-candidates
@@ -123,7 +128,7 @@ runs:
         LOGIC_OUTPUT_FILE: ${{ steps.logic.outputs.execution_file }}
         SECURITY_OUTPUT_FILE: ${{ steps.security.outputs.execution_file }}
 
-    # 4) Verification pass — dispatch finding-verifier for each candidate
+    # 5) Verification pass — dispatch finding-verifier for each candidate
     - id: verify
       if: steps.combine.outputs.candidate_count != '0'
       continue-on-error: true
@@ -150,7 +155,7 @@ runs:
           --max-turns ${{ inputs.max_turns }}
           --allowedTools "Read,Grep,Glob,Task"
 
-    # 5) Deterministic posting layer
+    # 6) Deterministic posting layer
     - id: post
       if: steps.combine.outputs.candidate_count != '0'
       shell: bash
@@ -169,7 +174,7 @@ runs:
         CCR_PRIOR_COST_USD: ${{ steps.combine.outputs.cost_usd }}
         CCR_PRIOR_DURATION_MS: ${{ steps.combine.outputs.duration_ms }}
 
-    # 6) Post empty summary when no candidates found
+    # 7) Post empty summary when no candidates found
     - id: post-empty
       if: steps.combine.outputs.candidate_count == '0'
       shell: bash
