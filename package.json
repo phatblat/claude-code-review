@@ -1,0 +1,16 @@
+{
+  "name": "claude-code-review",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Generate-then-verify Claude code review GitHub Action: subagent definitions plus a deterministic, tested posting layer.",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  }
+}

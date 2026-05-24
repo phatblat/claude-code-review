@@ -1,0 +1,5 @@
+node_modules/
+dist/
+ai-review/
+ai-review.zip
+.DS_Store
