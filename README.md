@@ -75,6 +75,20 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
+### Inputs
+
+| Input | Default | Description |
+|-------|---------|-------------|
+| `anthropic_api_key` | — | Anthropic API key |
+| `model` | `claude-sonnet-4-6` | Model for reviewer/verifier subagents |
+| `max_turns` | `12` | Max turns per Claude Code run |
+| `skip_globs` | `""` | Comma-separated globs to exclude |
+| `important_threshold` | `0.5` | Min confidence for important findings (0–1) |
+| `nit_threshold` | `0.85` | Min confidence for nits (0–1) |
+| `max_nits` | `5` | Max inline nit comments; rest go to summary |
+| `post_pre_existing` | `false` | Post findings already on the base branch |
+| `show_full_output` | `false` | Stream full Claude output to Actions log. **WARNING: may expose secrets and sensitive code in public repos.** |
+
 ## Tuning
 
 The noise dial has two layers:
