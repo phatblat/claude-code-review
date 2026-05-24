@@ -27157,7 +27157,8 @@ async function main() {
   const outputFile = process.env.VERIFIER_OUTPUT_FILE;
   if (outputFile) {
     try {
-      verifierStdout = (0, import_fs.readFileSync)(outputFile, "utf-8");
+      const raw = (0, import_fs.readFileSync)(outputFile, "utf-8");
+      verifierStdout = extractResultText(raw);
     } catch {
       core3.warning(`could not read verifier output file: ${outputFile}`);
     }
@@ -27200,6 +27201,28 @@ async function main() {
   );
   core3.setOutput("important", String(result.summary.important));
   core3.setOutput("nit", String(result.summary.nit));
+}
+function extractResultText(raw) {
+  try {
+    const messages = JSON.parse(raw);
+    if (!Array.isArray(messages)) return raw;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg.type === "result" && typeof msg.result === "string") {
+        return msg.result;
+      }
+    }
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg.type === "assistant" && Array.isArray(msg.message?.content)) {
+        for (const block of msg.message.content) {
+          if (block.type === "text") return block.text;
+        }
+      }
+    }
+  } catch {
+  }
+  return raw;
 }
 function required(name) {
   const v = process.env[name];
