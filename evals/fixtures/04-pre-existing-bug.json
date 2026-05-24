@@ -1,0 +1,19 @@
+{
+  "name": "pre-existing-bug",
+  "description": "Bug exists on base branch — verifier marks pre_existing, pipeline drops it",
+  "files": [
+    {
+      "filename": "src/math.ts",
+      "patch": "@@ -1,4 +1,5 @@\n function divide(a: number, b: number) {\n   return a / b;\n+  // added comment\n }"
+    }
+  ],
+  "verifierOutput": "[{\"verdict\":\"pre_existing\",\"file\":\"src/math.ts\",\"line\":2,\"category\":\"logic\",\"severity\":\"important\",\"confidence\":0.88,\"evidence\":\"src/math.ts:2 divides without checking b===0, but this code is unchanged from the base branch\",\"suggestion\":null}]",
+  "expected": [
+    {
+      "file": "src/math.ts",
+      "category": "logic",
+      "verdict": "pre_existing",
+      "description": "divide-by-zero is pre-existing"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "intentional-lint-ignore-rejected",
+  "description": "Behavior is intentional and documented with a lint-ignore comment",
+  "files": [
+    {
+      "filename": "src/compat.ts",
+      "patch": "@@ -1,3 +1,5 @@\n // eslint-disable-next-line @typescript-eslint/no-explicit-any\n+function deserialize(raw: any): unknown {\n+  return JSON.parse(raw);\n }"
+    }
+  ],
+  "verifierOutput": "[{\"verdict\":\"rejected\",\"file\":\"src/compat.ts\",\"line\":2,\"category\":\"logic\",\"severity\":\"nit\",\"confidence\":0.18,\"evidence\":\"src/compat.ts:1 has an explicit eslint-disable for no-explicit-any; the use of any is intentional for this compatibility layer\",\"suggestion\":null}]",
+  "expected": [
+    {
+      "file": "src/compat.ts",
+      "category": "logic",
+      "verdict": "rejected",
+      "description": "intentional any usage documented with lint-ignore"
+    }
+  ]
+}

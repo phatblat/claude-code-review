@@ -1,0 +1,19 @@
+{
+  "name": "outside-diff-dropped",
+  "description": "Finding on a line not in the diff — should be dropped by pre-filter",
+  "files": [
+    {
+      "filename": "src/app.ts",
+      "patch": "@@ -5,3 +5,4 @@\n const x = 1;\n+const y = 2;\n const z = 3;"
+    }
+  ],
+  "verifierOutput": "[{\"verdict\":\"confirmed\",\"file\":\"src/app.ts\",\"line\":99,\"category\":\"logic\",\"severity\":\"important\",\"confidence\":0.88,\"evidence\":\"src/app.ts:99 has a potential issue\",\"suggestion\":null}]",
+  "expected": [
+    {
+      "file": "src/app.ts",
+      "category": "logic",
+      "verdict": "rejected",
+      "description": "verifier confirmed but line 99 is outside the diff — pre-filter drops it"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "missing-await-confirmed",
+  "description": "Async function called without await — promise silently dropped",
+  "files": [
+    {
+      "filename": "src/cleanup.ts",
+      "patch": "@@ -1,3 +1,5 @@\n async function cleanup() {\n+  deleteOldRecords();\n+  notifyAdmin();\n   return 'done';\n }"
+    }
+  ],
+  "verifierOutput": "[{\"verdict\":\"confirmed\",\"file\":\"src/cleanup.ts\",\"line\":2,\"category\":\"logic\",\"severity\":\"important\",\"confidence\":0.90,\"evidence\":\"src/cleanup.ts:2 calls async deleteOldRecords() without await; the returned promise is silently dropped and errors won't propagate\",\"suggestion\":\"await deleteOldRecords();\"}]",
+  "expected": [
+    {
+      "file": "src/cleanup.ts",
+      "category": "logic",
+      "verdict": "confirmed",
+      "description": "missing await drops promise silently"
+    }
+  ]
+}

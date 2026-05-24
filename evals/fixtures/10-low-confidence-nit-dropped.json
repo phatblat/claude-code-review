@@ -1,0 +1,19 @@
+{
+  "name": "low-confidence-nit-dropped",
+  "description": "Nit with confidence below default threshold (0.85) should be dropped by policy",
+  "files": [
+    {
+      "filename": "src/format.ts",
+      "patch": "@@ -1,3 +1,4 @@\n function format(d: Date) {\n+  return d.toISOString().slice(0, 10);\n   // returns YYYY-MM-DD\n }"
+    }
+  ],
+  "verifierOutput": "[{\"verdict\":\"confirmed\",\"file\":\"src/format.ts\",\"line\":2,\"category\":\"logic\",\"severity\":\"nit\",\"confidence\":0.60,\"evidence\":\"src/format.ts:2 uses toISOString which is always UTC; could surprise callers in non-UTC timezones\",\"suggestion\":null}]",
+  "expected": [
+    {
+      "file": "src/format.ts",
+      "category": "logic",
+      "verdict": "rejected",
+      "description": "verifier confirmed but confidence 0.60 < nit threshold 0.85 — policy drops it"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "off-by-one-confirmed",
+  "description": "Off-by-one in loop bound causes last element to be skipped",
+  "files": [
+    {
+      "filename": "src/util.ts",
+      "patch": "@@ -1,3 +1,5 @@\n function sumAll(arr: number[]) {\n+  let total = 0;\n+  for (let i = 0; i < arr.length - 1; i++) total += arr[i];\n   return total;\n }"
+    }
+  ],
+  "verifierOutput": "[{\"verdict\":\"confirmed\",\"file\":\"src/util.ts\",\"line\":3,\"category\":\"logic\",\"severity\":\"important\",\"confidence\":0.94,\"evidence\":\"src/util.ts:3 loop bound is arr.length - 1 which skips the last element; sumAll([1,2,3]) returns 3 instead of 6\",\"suggestion\":\"for (let i = 0; i < arr.length; i++) total += arr[i];\"}]",
+  "expected": [
+    {
+      "file": "src/util.ts",
+      "category": "logic",
+      "verdict": "confirmed",
+      "description": "off-by-one skips last element"
+    }
+  ]
+}

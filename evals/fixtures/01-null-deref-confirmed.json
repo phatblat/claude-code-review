@@ -1,0 +1,19 @@
+{
+  "name": "null-deref-confirmed",
+  "description": "Real null dereference — user.name accessed without null check",
+  "files": [
+    {
+      "filename": "src/handler.ts",
+      "patch": "@@ -1,3 +1,5 @@\n const user = getUser(id);\n+const name = user.name;\n+console.log(name.toUpperCase());\n return respond(200);"
+    }
+  ],
+  "verifierOutput": "[{\"verdict\":\"confirmed\",\"file\":\"src/handler.ts\",\"line\":2,\"category\":\"logic\",\"severity\":\"important\",\"confidence\":0.92,\"evidence\":\"src/handler.ts:2 dereferences user without null check; getUser can return null per its type signature\",\"suggestion\":\"const name = user?.name ?? '';\\nconsole.log(name.toUpperCase());\"}]",
+  "expected": [
+    {
+      "file": "src/handler.ts",
+      "category": "logic",
+      "verdict": "confirmed",
+      "description": "null deref on user.name"
+    }
+  ]
+}

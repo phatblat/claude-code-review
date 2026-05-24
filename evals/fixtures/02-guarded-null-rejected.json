@@ -1,0 +1,19 @@
+{
+  "name": "guarded-null-rejected",
+  "description": "False positive — null check exists outside the diff window",
+  "files": [
+    {
+      "filename": "src/service.ts",
+      "patch": "@@ -5,3 +5,4 @@\n if (!user) return null;\n const email = user.email;\n+const domain = email.split('@')[1];\n return { email, domain };"
+    }
+  ],
+  "verifierOutput": "[{\"verdict\":\"rejected\",\"file\":\"src/service.ts\",\"line\":7,\"category\":\"logic\",\"severity\":\"important\",\"confidence\":0.3,\"evidence\":\"src/service.ts:5 guards with if (!user) return null before the access\",\"suggestion\":null}]",
+  "expected": [
+    {
+      "file": "src/service.ts",
+      "category": "logic",
+      "verdict": "rejected",
+      "description": "null already guarded at line 5"
+    }
+  ]
+}

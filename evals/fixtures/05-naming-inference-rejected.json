@@ -1,0 +1,19 @@
+{
+  "name": "naming-inference-rejected",
+  "description": "Finding based purely on naming inference — no observed behavior",
+  "files": [
+    {
+      "filename": "src/cache.ts",
+      "patch": "@@ -1,3 +1,4 @@\n class Cache {\n+  private store = new Map<string, unknown>();\n   get(key: string) { return this.store.get(key); }\n }"
+    }
+  ],
+  "verifierOutput": "[{\"verdict\":\"rejected\",\"file\":\"src/cache.ts\",\"line\":2,\"category\":\"logic\",\"severity\":\"nit\",\"confidence\":0.2,\"evidence\":\"The name 'store' suggests persistent storage but Map is in-memory; however this is an inference from naming, not observed behavior\",\"suggestion\":null}]",
+  "expected": [
+    {
+      "file": "src/cache.ts",
+      "category": "logic",
+      "verdict": "rejected",
+      "description": "naming-only inference about Map vs persistence"
+    }
+  ]
+}

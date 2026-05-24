@@ -1,0 +1,19 @@
+{
+  "name": "framework-handles-rejected",
+  "description": "False positive — Express middleware already validates input",
+  "files": [
+    {
+      "filename": "src/routes.ts",
+      "patch": "@@ -3,3 +3,4 @@\n app.use(validateBody(schema));\n app.post('/users', (req, res) => {\n+  const { email } = req.body;\n   db.insert({ email });\n });"
+    }
+  ],
+  "verifierOutput": "[{\"verdict\":\"rejected\",\"file\":\"src/routes.ts\",\"line\":5,\"category\":\"security\",\"severity\":\"important\",\"confidence\":0.25,\"evidence\":\"src/routes.ts:3 uses validateBody(schema) middleware which validates req.body before the handler runs\",\"suggestion\":null}]",
+  "expected": [
+    {
+      "file": "src/routes.ts",
+      "category": "security",
+      "verdict": "rejected",
+      "description": "middleware already validates input"
+    }
+  ]
+}

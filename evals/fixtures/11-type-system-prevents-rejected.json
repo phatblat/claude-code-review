@@ -1,0 +1,19 @@
+{
+  "name": "type-system-prevents-rejected",
+  "description": "TypeScript strict mode prevents the claimed bug at compile time",
+  "files": [
+    {
+      "filename": "src/config.ts",
+      "patch": "@@ -1,3 +1,4 @@\n interface Config { port: number; host: string; }\n+function loadConfig(raw: Config): Config {\n   return { port: raw.port, host: raw.host };\n }"
+    }
+  ],
+  "verifierOutput": "[{\"verdict\":\"rejected\",\"file\":\"src/config.ts\",\"line\":2,\"category\":\"logic\",\"severity\":\"nit\",\"confidence\":0.15,\"evidence\":\"raw is typed as Config which requires port:number and host:string; TypeScript strict mode enforces this at compile time\",\"suggestion\":null}]",
+  "expected": [
+    {
+      "file": "src/config.ts",
+      "category": "logic",
+      "verdict": "rejected",
+      "description": "type system already enforces correctness"
+    }
+  ]
+}

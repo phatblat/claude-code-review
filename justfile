@@ -23,6 +23,10 @@ build:
 test *args:
     npm test -- {{ args }}
 
+# Run eval harness against labeled fixtures
+eval:
+    npm run eval
+
 # Run tests in watch mode
 test-watch:
     npm run test:watch

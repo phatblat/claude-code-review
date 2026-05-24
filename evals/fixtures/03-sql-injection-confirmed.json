@@ -1,0 +1,19 @@
+{
+  "name": "sql-injection-confirmed",
+  "description": "SQL injection — user input concatenated into query string",
+  "files": [
+    {
+      "filename": "src/db.ts",
+      "patch": "@@ -1,3 +1,4 @@\n async function findUser(name: string) {\n+  const result = await db.query(`SELECT * FROM users WHERE name = '${name}'`);\n   return result.rows[0];\n }"
+    }
+  ],
+  "verifierOutput": "[{\"verdict\":\"confirmed\",\"file\":\"src/db.ts\",\"line\":2,\"category\":\"security\",\"severity\":\"important\",\"confidence\":0.97,\"evidence\":\"src/db.ts:2 interpolates user-supplied name directly into SQL; an attacker can inject via name=\\\"'; DROP TABLE users; --\\\"\",\"suggestion\":\"const result = await db.query('SELECT * FROM users WHERE name = $1', [name]);\"}]",
+  "expected": [
+    {
+      "file": "src/db.ts",
+      "category": "security",
+      "verdict": "confirmed",
+      "description": "SQL injection via string interpolation"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "swallowed-error-confirmed",
+  "description": "Catch block silently swallows error without logging or rethrowing",
+  "files": [
+    {
+      "filename": "src/sync.ts",
+      "patch": "@@ -1,3 +1,6 @@\n async function syncData() {\n+  try {\n+    await fetchRemote();\n+  } catch (e) {}\n   return localCache;\n }"
+    }
+  ],
+  "verifierOutput": "[{\"verdict\":\"confirmed\",\"file\":\"src/sync.ts\",\"line\":4,\"category\":\"logic\",\"severity\":\"important\",\"confidence\":0.91,\"evidence\":\"src/sync.ts:4 empty catch swallows any error from fetchRemote(); caller gets stale localCache with no indication of failure\",\"suggestion\":null}]",
+  "expected": [
+    {
+      "file": "src/sync.ts",
+      "category": "logic",
+      "verdict": "confirmed",
+      "description": "empty catch swallows fetch error silently"
+    }
+  ]
+}
