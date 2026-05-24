@@ -27149,6 +27149,40 @@ function parseSkipGlobs(value) {
 }
 
 // src/main.ts
+if (process.argv.includes("--extract-candidates")) {
+  extractCandidates();
+} else {
+  main().catch(
+    (err) => core3.setFailed(err instanceof Error ? err.message : String(err))
+  );
+}
+function extractCandidates() {
+  const files = [
+    process.env.LOGIC_OUTPUT_FILE,
+    process.env.SECURITY_OUTPUT_FILE
+  ].filter((f) => !!f);
+  const candidates = [];
+  for (const file of files) {
+    try {
+      const raw = (0, import_fs.readFileSync)(file, "utf-8");
+      const text = extractResultText(raw);
+      for (const line of text.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("```")) continue;
+        try {
+          JSON.parse(trimmed);
+          candidates.push(trimmed);
+        } catch {
+        }
+      }
+    } catch {
+      core3.warning(`could not read execution file: ${file}`);
+    }
+  }
+  core3.info(`extracted ${candidates.length} candidate(s)`);
+  core3.setOutput("candidate_count", String(candidates.length));
+  core3.setOutput("candidates", candidates.join("\n"));
+}
 async function main() {
   const token = required("GITHUB_TOKEN");
   const [owner, repo] = required("REPO").split("/");
@@ -27249,9 +27283,6 @@ function required(name) {
   if (!v) throw new Error(`missing required env: ${name}`);
   return v;
 }
-main().catch(
-  (err) => core3.setFailed(err instanceof Error ? err.message : String(err))
-);
 /*! Bundled license information:
 
 undici/lib/fetch/body.js:
