@@ -71,16 +71,16 @@ runs:
           --allowedTools "Read,Grep,Glob,Task"
 
     # 2) Deterministic posting layer (this repo's dist/main.js).
+    #    claude-code-action writes execution output to a file; the path is
+    #    in steps.review.outputs.execution_file.
     - id: post
       shell: bash
-      # VERIFY: confirm the output field name exposed by claude-code-action
-      # for the coordinator's stdout. See AGENT_HANDOFF.md §5A.
       run: node ${{ github.action_path }}/dist/main.js
       env:
         GITHUB_TOKEN: ${{ github.token }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
         REPO: ${{ github.repository }}
-        VERIFIER_OUTPUT: ${{ steps.review.outputs.execution_output }}
+        VERIFIER_OUTPUT_FILE: ${{ steps.review.outputs.execution_file }}
         SKIP_GLOBS: ${{ inputs.skip_globs }}
         CCR_IMPORTANT_THRESHOLD: ${{ inputs.important_threshold }}
         CCR_NIT_THRESHOLD: ${{ inputs.nit_threshold }}

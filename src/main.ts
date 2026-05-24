@@ -13,7 +13,15 @@ async function main(): Promise<void> {
   const token = required("GITHUB_TOKEN");
   const [owner, repo] = required("REPO").split("/");
   const prNumber = Number(required("PR_NUMBER"));
-  const verifierStdout = process.env.VERIFIER_OUTPUT ?? "[]";
+  let verifierStdout = "[]";
+  const outputFile = process.env.VERIFIER_OUTPUT_FILE;
+  if (outputFile) {
+    try {
+      verifierStdout = readFileSync(outputFile, "utf-8");
+    } catch {
+      core.warning(`could not read verifier output file: ${outputFile}`);
+    }
+  }
 
   const octokit = github.getOctokit(token);
 
