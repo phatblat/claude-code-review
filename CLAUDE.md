@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm test              # vitest — 58 tests, ~2s, no network
 npm run test:watch    # vitest watch mode
 npm run typecheck     # tsc --noEmit (strict mode)
-npm run build         # esbuild → dist/main.js (must commit dist/)
+npm run build         # esbuild → dist/main.js (gitignored; CI builds on release)
 npx vitest run test/diffmap.test.ts   # single test file
 ```
 
@@ -72,7 +72,12 @@ Diff position math (`diffmap.ts`) is the classic footgun — position is the off
 
 ## Build Plan
 
-See `AGENT_HANDOFF.md` for the ordered milestone plan (M1–M7) covering: action metadata, posting entrypoint, prior-state retrieval, config file, eval harness, CI/release, and fork safety.
+See `AGENT_HANDOFF.md` for the ordered milestone plan (M1–M7). Current status:
+
+- **M1** (action metadata) — done, pending `execution_output` field verification (§5A)
+- **M2** (posting entrypoint) — done, 18 tests covering `executeReview()` and all pure helpers
+- **M3** (prior-state / idempotency) — partially seeded; three GraphQL stubs remain in `octokit-adapter.ts`
+- **M4–M7** — not started (config file, eval harness, CI/release, fork safety)
 
 ## Design Reference
 
