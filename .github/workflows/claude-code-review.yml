@@ -1,0 +1,67 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+
+# Least privilege: read code, write PR comments.
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # subagents may read history/base for verification
+
+      # 1) Run the generate-then-verify pipeline. The coordinator prompt
+      #    dispatches the reviewer + verifier subagents (in .claude/agents/)
+      #    and prints the verified findings as JSON to stdout. It does NOT
+      #    post anything.
+      - id: review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # The coordinator prompt body (see prompts/coordinator.md). Inline it
+          # or read it from the repo; shown abbreviated here.
+          prompt: |
+            You are coordinating an automated review of PR
+            #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+            1. Dispatch logic-reviewer and security-reviewer on the diff in
+               parallel; collect their JSONL candidates.
+            2. For each candidate, dispatch finding-verifier with that single
+               finding (one isolated verification per candidate).
+            3. Print a JSON array of every verifier result to stdout. Do not
+               post anything to GitHub.
+          claude_args: >-
+            --model claude-sonnet-4-6
+            --max-turns 12
+            --allowedTools "Read,Grep,Glob,Task"
+
+      # 2) Deterministic posting layer (this repo's src/). Consumes the
+      #    coordinator's JSON, applies pre-filters + policy, maps positions,
+      #    reconciles against prior comments, and posts via the GitHub API.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - run: node ./dist/post-review.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          # The coordinator's structured output from step 1.
+          VERIFIER_OUTPUT: ${{ steps.review.outputs.execution_output }}
+          # Tunable policy (see policy.ts defaults).
+          SKIP_GLOBS: "src/gen/**,**/*.lock,vendor/**"
+
+# Notes:
+# - The post-review.js entrypoint (not included here) is a thin wrapper that
+#   reads VERIFIER_OUTPUT, calls runPipeline() from src/index.ts, and executes
+#   the returned plan against @octokit. The pure logic it depends on is the
+#   tested code in src/.
+# - Pin claude-code-action and the model string to versions you've evaluated.
