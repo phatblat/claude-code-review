@@ -11,7 +11,12 @@ import {
 } from "../src/github/comment-format.js";
 import { toReviewComment, canPostInline } from "../src/github/payload.js";
 import { derivePriorComments } from "../src/github/prior-state.js";
-import { parsePolicy, parseSkipGlobs } from "../src/config.js";
+import {
+  parsePolicy,
+  parseSkipGlobs,
+  parseConfigFile,
+  mergeConfigs,
+} from "../src/config.js";
 import { DEFAULT_POLICY } from "../src/policy.js";
 import type { PostableFinding } from "../src/types.js";
 
@@ -146,5 +151,85 @@ describe("config", () => {
       "**/*.lock",
     ]);
     expect(parseSkipGlobs(undefined)).toEqual([]);
+  });
+});
+
+describe("parseConfigFile", () => {
+  it("parses a full config file", () => {
+    const yml = `
+thresholds:
+  important: 0.6
+  nit: 0.9
+max_nits: 3
+post_pre_existing: true
+skip_globs:
+  - "src/gen/**"
+  - "**/*.lock"
+`;
+    const cfg = parseConfigFile(yml);
+    expect(cfg.policy.thresholds.important).toBe(0.6);
+    expect(cfg.policy.thresholds.nit).toBe(0.9);
+    expect(cfg.policy.maxNits).toBe(3);
+    expect(cfg.policy.postPreExisting).toBe(true);
+    expect(cfg.skipGlobs).toEqual(["src/gen/**", "**/*.lock"]);
+  });
+
+  it("uses defaults for missing fields", () => {
+    const cfg = parseConfigFile("max_nits: 2\n");
+    expect(cfg.policy.thresholds.important).toBe(
+      DEFAULT_POLICY.thresholds.important
+    );
+    expect(cfg.policy.thresholds.nit).toBe(DEFAULT_POLICY.thresholds.nit);
+    expect(cfg.policy.maxNits).toBe(2);
+    expect(cfg.policy.postPreExisting).toBe(false);
+    expect(cfg.skipGlobs).toEqual([]);
+  });
+
+  it("returns defaults for invalid YAML", () => {
+    const cfg = parseConfigFile(":::not yaml:::");
+    expect(cfg.policy).toEqual(DEFAULT_POLICY);
+    expect(cfg.skipGlobs).toEqual([]);
+  });
+
+  it("returns defaults for non-object YAML", () => {
+    const cfg = parseConfigFile("42");
+    expect(cfg.policy).toEqual(DEFAULT_POLICY);
+  });
+
+  it("ignores non-string entries in skip_globs", () => {
+    const cfg = parseConfigFile("skip_globs:\n  - 123\n  - valid/**\n");
+    expect(cfg.skipGlobs).toEqual(["valid/**"]);
+  });
+});
+
+describe("mergeConfigs", () => {
+  it("prefers env over config file", () => {
+    const file = parseConfigFile(
+      "thresholds:\n  important: 0.3\nmax_nits: 10\n"
+    );
+    const { policy } = mergeConfigs(file, {
+      CCR_IMPORTANT_THRESHOLD: "0.8",
+    });
+    expect(policy.thresholds.important).toBe(0.8);
+    expect(policy.maxNits).toBe(10);
+  });
+
+  it("falls through to config file when env is absent", () => {
+    const file = parseConfigFile("thresholds:\n  nit: 0.95\nmax_nits: 2\n");
+    const { policy } = mergeConfigs(file, {});
+    expect(policy.thresholds.nit).toBe(0.95);
+    expect(policy.maxNits).toBe(2);
+  });
+
+  it("prefers env skip_globs when present", () => {
+    const file = parseConfigFile("skip_globs:\n  - from/file/**\n");
+    const { skipGlobs } = mergeConfigs(file, { SKIP_GLOBS: "from/env/**" });
+    expect(skipGlobs).toEqual(["from/env/**"]);
+  });
+
+  it("falls through to file skip_globs when env is empty", () => {
+    const file = parseConfigFile("skip_globs:\n  - from/file/**\n");
+    const { skipGlobs } = mergeConfigs(file, {});
+    expect(skipGlobs).toEqual(["from/file/**"]);
   });
 });

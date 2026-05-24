@@ -6,7 +6,8 @@ import * as core from "@actions/core";
 import * as github from "@actions/github";
 import { OctokitGitHubPort } from "./github/octokit-adapter.js";
 import { executeReview } from "./post-review.js";
-import { parsePolicy, parseSkipGlobs } from "./config.js";
+import { readFileSync } from "fs";
+import { parseConfigFile, mergeConfigs, parsePolicy } from "./config.js";
 
 async function main(): Promise<void> {
   const token = required("GITHUB_TOKEN");
@@ -33,10 +34,21 @@ async function main(): Promise<void> {
     prAuthor,
   });
 
+  let fileConfig = { policy: parsePolicy({}), skipGlobs: [] as string[] };
+  const configPath = ".github/claude-code-review.yml";
+  try {
+    fileConfig = parseConfigFile(readFileSync(configPath, "utf-8"));
+    core.info(`loaded config from ${configPath}`);
+  } catch {
+    // no config file — use defaults
+  }
+
+  const { policy, skipGlobs } = mergeConfigs(fileConfig, process.env);
+
   const result = await executeReview(port, {
     verifierStdout,
-    skipGlobs: parseSkipGlobs(process.env.SKIP_GLOBS),
-    policy: parsePolicy(process.env),
+    skipGlobs,
+    policy,
   });
 
   if (result.parseErrors.length > 0) {
