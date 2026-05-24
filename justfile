@@ -15,6 +15,10 @@ deps:
     mise install
     npm install
 
+# Bundle src/main.ts → dist/main.js
+build:
+    npm run build
+
 # Run test suite
 test *args:
     npm test -- {{ args }}

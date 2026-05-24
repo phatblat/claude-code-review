@@ -9,9 +9,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm test              # vitest — 40 tests, ~2s, no network
+npm test              # vitest — 58 tests, ~2s, no network
 npm run test:watch    # vitest watch mode
 npm run typecheck     # tsc --noEmit (strict mode)
+npm run build         # esbuild → dist/main.js (must commit dist/)
 npx vitest run test/diffmap.test.ts   # single test file
 ```
 
@@ -37,6 +38,16 @@ Verifier JSON → parse (schema.ts) → pre-filter (prefilters.ts)
   → position map (diffmap.ts) → reconcile (reconcile.ts)
   → ReconcilePlan { create, update, resolve, suppressed }
 ```
+
+### Posting layer (`src/github/`, `src/post-review.ts`)
+
+Ports & adapters pattern. `executeReview()` depends on a `GitHubPort` interface, tested against an in-memory fake. The only non-pure file is `octokit-adapter.ts`. Key modules:
+
+- `marker.ts` — hidden `<!-- ccr:fp=... -->` fingerprint in comment bodies
+- `prior-state.ts` — derives open/resolved/dismissed from listed comments
+- `comment-format.ts` — renders badge, evidence, suggestion blocks, summary
+- `payload.ts` — builds `line`+`side: RIGHT` payloads (not deprecated `position`)
+- `config.ts` — parses action env inputs into `PolicyConfig` + skip globs
 
 ## Key Invariants
 

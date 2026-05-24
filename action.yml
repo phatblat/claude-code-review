@@ -1,0 +1,88 @@
+name: "Claude Code Review"
+description: "Generate-then-verify AI code review with line-level, applyable suggestions."
+author: "phatblat"
+branding:
+  icon: "check-circle"
+  color: "purple"
+
+inputs:
+  anthropic_api_key:
+    description: "Anthropic API key (or configure Bedrock/Vertex/Foundry on the action step instead)."
+    required: false
+  model:
+    description: "Model for the reviewer/verifier subagents."
+    required: false
+    default: "claude-sonnet-4-6"
+  max_turns:
+    description: "Max turns per Claude Code run."
+    required: false
+    default: "12"
+  skip_globs:
+    description: "Comma-separated globs to exclude (generated code, lockfiles, vendored)."
+    required: false
+    default: ""
+  important_threshold:
+    description: "Min verifier confidence to post an Important finding (0-1)."
+    required: false
+    default: "0.5"
+  nit_threshold:
+    description: "Min verifier confidence to post a Nit (0-1)."
+    required: false
+    default: "0.85"
+  max_nits:
+    description: "Max nit comments posted inline; the rest are summarized."
+    required: false
+    default: "5"
+  post_pre_existing:
+    description: "Post findings the verifier marks as pre-existing."
+    required: false
+    default: "false"
+
+outputs:
+  important:
+    description: "Count of Important findings posted."
+    value: ${{ steps.post.outputs.important }}
+  nit:
+    description: "Count of Nit findings posted."
+    value: ${{ steps.post.outputs.nit }}
+
+runs:
+  using: "composite"
+  steps:
+    # 1) Run the generate-then-verify pipeline. The coordinator dispatches the
+    #    subagents in .claude/agents/ and prints verified findings as JSON. It
+    #    does NOT post anything.
+    - id: review
+      uses: anthropics/claude-code-action@v1
+      with:
+        anthropic_api_key: ${{ inputs.anthropic_api_key }}
+        prompt: |
+          You are coordinating an automated review of PR
+          #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+          1. Dispatch logic-reviewer and security-reviewer on the diff in
+             parallel; collect their JSONL candidates.
+          2. For each candidate, dispatch finding-verifier with that single
+             finding (one isolated verification per candidate).
+          3. Print a JSON array of every verifier result to stdout. Do not post
+             anything to GitHub.
+        claude_args: >-
+          --model ${{ inputs.model }}
+          --max-turns ${{ inputs.max_turns }}
+          --allowedTools "Read,Grep,Glob,Task"
+
+    # 2) Deterministic posting layer (this repo's dist/main.js).
+    - id: post
+      shell: bash
+      # VERIFY: confirm the output field name exposed by claude-code-action
+      # for the coordinator's stdout. See AGENT_HANDOFF.md §5A.
+      run: node ${{ github.action_path }}/dist/main.js
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        REPO: ${{ github.repository }}
+        VERIFIER_OUTPUT: ${{ steps.review.outputs.execution_output }}
+        SKIP_GLOBS: ${{ inputs.skip_globs }}
+        CCR_IMPORTANT_THRESHOLD: ${{ inputs.important_threshold }}
+        CCR_NIT_THRESHOLD: ${{ inputs.nit_threshold }}
+        CCR_MAX_NITS: ${{ inputs.max_nits }}
+        CCR_POST_PRE_EXISTING: ${{ inputs.post_pre_existing }}

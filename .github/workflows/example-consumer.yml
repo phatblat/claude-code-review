@@ -1,0 +1,26 @@
+# Example consumer workflow. In another repo this would reference the published
+# action: `uses: phatblat/claude-code-review@v1`. Here it uses the local action.
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./ # or: phatblat/claude-code-review@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          skip_globs: "src/gen/**,**/*.lock,vendor/**"
+          nit_threshold: "0.85"
+          max_nits: "5"

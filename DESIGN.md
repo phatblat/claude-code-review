@@ -172,3 +172,46 @@ Most of the intelligence lives in four markdown files and a coordinator prompt
 the deterministic posting layer, which is exactly the part that benefits from
 types and tests. Distribute the whole thing across repos as a reusable action
 (`uses: your-org/ai-review@v1`) so there's one source of truth to fix and tune.
+
+---
+
+## Posting layer (ports & adapters)
+
+The posting layer keeps the same discipline as the core: a small, fully tested
+pure center and a thin I/O shell. The orchestration, `executeReview()`, depends
+on a `GitHubPort` interface rather than on octokit, so it is exercised in tests
+against an in-memory fake port that records every call — a deterministic,
+repeatable integration test with no network.
+
+Everything that formats or decides is a pure function:
+
+- **`github/marker.ts`** embeds and parses a hidden `<!-- ccr:fp=… -->`
+  fingerprint marker in each comment body. This is how prior comments are
+  matched across pushes with no external storage: list the bot's comments, parse
+  the markers, reconcile on fingerprint.
+- **`github/prior-state.ts`** derives `PriorComment[]` (open / resolved /
+  dismissed) from listed comments plus the sets of 👎'd and resolved-thread
+  comment ids. Dismissal wins over resolution, so a finding the author rejected
+  never resurfaces. Pure given those inputs.
+- **`github/comment-format.ts`** renders the comment body (severity badge,
+  evidence, optional ` ```suggestion ` block, marker) and the summary comment.
+- **`github/payload.ts`** builds the review-comment payload. We post with
+  `line` + `side: "RIGHT"` (the modern reviews API), not the deprecated
+  `position`. The `position` from `diffmap.ts` is repurposed as the
+  "is this line in the diff" gate (`canPostInline`): null position means the
+  finding can't be placed inline and is reflected in the summary instead.
+- **`config.ts`** parses action inputs (env) into a `PolicyConfig` + skip globs,
+  falling back to defaults on anything missing or malformed.
+
+The one non-pure file is **`github/octokit-adapter.ts`**, which implements the
+port. Its REST methods (list files, list comments, create, update, summary
+upsert) are implemented. The two GraphQL-backed methods — detecting 👎
+dismissals and resolved threads — are stubbed and clearly flagged, because they
+depend on the current GraphQL schema (see `AGENT_HANDOFF.md` §5C). Until they're
+completed the layer degrades gracefully: create/update still work; nothing is
+suppressed or auto-resolved. `main.ts` is the action entrypoint that reads env,
+builds the adapter, and calls `executeReview()`.
+
+This is the same boundary again: `executeReview()` and every pure helper are
+under unit tests; the adapter is the only thing that touches the network and is
+the only thing left to verify against live API docs.

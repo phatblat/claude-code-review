@@ -94,32 +94,34 @@ don't break):
 Each milestone has an acceptance criterion. Keep `npm test` green throughout;
 add tests with each milestone.
 
-### M1 — Make it an action
-- Add `action.yml` (composite or Node20 action) with inputs: `anthropic_api_key`
-  (and Bedrock/Vertex/Foundry alternatives), `model`, `max_turns`,
-  `skip_globs`, `config_path`, `post_pre_existing`, threshold/nit overrides.
-- Decide action type. Recommendation: **Node20 JS action** for the posting step
-  + a call out to `claude-code-action` for the model step, OR a **composite
-  action** that runs `claude-code-action` then `node dist/post-review.js`.
-  Document the choice.
-- Bundle `src` → `dist/` with `ncc` or `esbuild` (JS actions run from the
-  checked-in build). Add an `npm run build` and commit `dist/`.
+### M1 — Make it an action  ✅ SEEDED
+- `action.yml` exists (composite: runs `claude-code-action`, then
+  `node dist/main.js`) with the threshold/nit/skip inputs wired through to env.
+- `npm run build` bundles `src/main.ts` → `dist/main.js` via esbuild. **You must
+  commit `dist/`** and keep it fresh (M6 adds the CI freshness check).
+- **Remaining:** add Bedrock/Vertex/Foundry input alternatives if needed; verify
+  the `claude-code-action` output field (§5A) used in `action.yml`.
 - **Accept:** a local consumer workflow referencing the action by path runs
   end-to-end against a test PR.
 
-### M2 — Posting entrypoint (`src/post-review.ts` → `dist/`)
-- Read the coordinator's JSON (see §5, item A — verify the mechanism first),
-  the PR file patches, and prior state; call `runPipeline()`; execute the plan.
-- Post inline comments via the GitHub reviews API. When `finding.suggestion` is
-  non-null and `finding.position` is non-null, render a GitHub
-  ` ```suggestion ` block; otherwise post the evidence text only.
-- Post a check-run (or single summary comment) with the severity tallies and
-  the `extraNitCount` ("plus N similar nits") from the policy summary — this is
-  the redundant surface that survives lines GitHub rejects for inline comments.
-- **Accept:** confirmed findings appear inline with working one-click
-  suggestions; rejected/below-threshold/out-of-diff findings do not.
+### M2 — Posting entrypoint  ✅ SEEDED
+- `executeReview()` (`src/post-review.ts`) reads files + prior state via a
+  `GitHubPort`, calls `runPipeline()`, and executes the create/update/resolve/
+  suppress plan. It's pure of network and covered by an in-memory-fake test.
+- Inline comments use `line` + `side: RIGHT`; ` ```suggestion ` blocks render
+  when the verifier supplied a suggestion (`comment-format.ts`). The summary
+  comment carries tallies + `extraNitCount` and is upserted each run.
+- The octokit adapter (`src/github/octokit-adapter.ts`) implements the REST
+  methods. **Remaining:** the two GraphQL methods are stubbed — complete them in
+  M3 after verifying the schema (§5C).
+- **Accept (met by seed):** confirmed in-diff findings post inline with
+  suggestions; rejected/below-threshold/out-of-diff/dismissed findings do not.
 
-### M3 — Prior-state retrieval & idempotency
+### M3 — Prior-state retrieval & idempotency  (partially seeded)
+- Seeded: `derivePriorComments()` (pure, tested), the comment marker design
+  (`github/marker.ts`), and the REST half of the adapter. **Remaining: the two
+  GraphQL methods** (`getDownvotedCommentIds`, `getResolvedThreadCommentIds`,
+  plus the `resolveThread` mutation) — currently stubbed. Complete after §5C.
 - Implement how `PriorComment[]` is reconstructed each run. Recommended design:
   embed a hidden marker in every posted comment body, e.g.
   `<!-- ccr:fp=<fingerprint> -->`, then on each run list the bot's existing
