@@ -22,22 +22,22 @@ deterministic core under unit tests and the prompt layer under an eval harness.
 The seed (`ai-review/`) already contains a working, tested core. Treat it as
 the foundation; do not rewrite it without cause.
 
-| Path | Status | Notes |
-| --- | --- | --- |
-| `.claude/agents/logic-reviewer.md` | done | generation pass (correctness) |
-| `.claude/agents/security-reviewer.md` | done | generation pass (security) |
-| `.claude/agents/finding-verifier.md` | done | verification pass, adversarial + evidence-gated |
-| `prompts/coordinator.md` | done | orchestrates subagents, emits JSON, posts nothing |
-| `src/types.ts` | done | data contract |
-| `src/schema.ts` | done | parse/validate model output, drop-not-crash |
-| `src/fingerprint.ts` | done | stable id, excludes line number |
-| `src/prefilters.ts` | done | globs, CI-covered, outside-diff, dedupe |
-| `src/policy.ts` | done | thresholds, severity gate, nit cap |
-| `src/diffmap.ts` | done | file:line → GitHub diff position |
-| `src/reconcile.ts` | done | create/update/resolve/suppress |
-| `src/index.ts` | done | `runPipeline()` composes all stages |
-| `test/*.test.ts` | done | 40 tests, `npm test`, ~2s, no network |
-| `.github/workflows/ai-review.yml` | example only | illustrative wiring, not the action itself |
+| Path                                  | Status       | Notes                                             |
+| ------------------------------------- | ------------ | ------------------------------------------------- |
+| `.claude/agents/logic-reviewer.md`    | done         | generation pass (correctness)                     |
+| `.claude/agents/security-reviewer.md` | done         | generation pass (security)                        |
+| `.claude/agents/finding-verifier.md`  | done         | verification pass, adversarial + evidence-gated   |
+| `prompts/coordinator.md`              | done         | orchestrates subagents, emits JSON, posts nothing |
+| `src/types.ts`                        | done         | data contract                                     |
+| `src/schema.ts`                       | done         | parse/validate model output, drop-not-crash       |
+| `src/fingerprint.ts`                  | done         | stable id, excludes line number                   |
+| `src/prefilters.ts`                   | done         | globs, CI-covered, outside-diff, dedupe           |
+| `src/policy.ts`                       | done         | thresholds, severity gate, nit cap                |
+| `src/diffmap.ts`                      | done         | file:line → GitHub diff position                  |
+| `src/reconcile.ts`                    | done         | create/update/resolve/suppress                    |
+| `src/index.ts`                        | done         | `runPipeline()` composes all stages               |
+| `test/*.test.ts`                      | done         | 40 tests, `npm test`, ~2s, no network             |
+| `.github/workflows/ai-review.yml`     | example only | illustrative wiring, not the action itself        |
 
 **Read `ai-review/DESIGN.md` in full before writing code.** It defines the
 architecture and the prompt/code boundary the whole project is organized
@@ -51,15 +51,15 @@ These are settled design decisions. Changing them means redoing the analysis
 in DESIGN.md; only do so with an explicit reason.
 
 1. **Two passes.** Generation is recall-biased (over-eager); verification is
-   precision-biased and tries to *disprove* each candidate. Never collapse them
+   precision-biased and tries to _disprove_ each candidate. Never collapse them
    back into a single turn — that removes the only real noise control.
 2. **The coordinator never posts.** It emits a JSON array of verified findings
    to stdout. All posting/filtering/state is deterministic code.
 3. **Judgment in prompts, plumbing in code.** Reviewer lenses, the verifier's
    evidence bar, severity, confidence, and suggestion text live in
    `.claude/agents/`. Parsing, globs, thresholds, position math, and
-   reconciliation live in `src/` under tests. The verifier *emits* severity +
-   confidence; `policy.ts` *decides* the cutoff. Keep that split.
+   reconciliation live in `src/` under tests. The verifier _emits_ severity +¡
+   confidence; `policy.ts` _decides_ the cutoff. Keep that split.
 4. **Subagents, not agent teams.** Review is read-heavy and convergent; use the
    Task tool fan-out. Do not introduce TeamCreate/SendMessage.
 5. **Fingerprint excludes the line number** so findings survive line drift.
@@ -94,7 +94,8 @@ don't break):
 Each milestone has an acceptance criterion. Keep `npm test` green throughout;
 add tests with each milestone.
 
-### M1 — Make it an action  ✅ SEEDED
+### M1 — Make it an action ✅ SEEDED
+
 - `action.yml` exists (composite: runs `claude-code-action`, then
   `node dist/main.js`) with the threshold/nit/skip inputs wired through to env.
 - `npm run build` bundles `src/main.ts` → `dist/main.js` via esbuild. **You must
@@ -104,7 +105,8 @@ add tests with each milestone.
 - **Accept:** a local consumer workflow referencing the action by path runs
   end-to-end against a test PR.
 
-### M2 — Posting entrypoint  ✅ SEEDED
+### M2 — Posting entrypoint ✅ SEEDED
+
 - `executeReview()` (`src/post-review.ts`) reads files + prior state via a
   `GitHubPort`, calls `runPipeline()`, and executes the create/update/resolve/
   suppress plan. It's pure of network and covered by an in-memory-fake test.
@@ -117,7 +119,8 @@ add tests with each milestone.
 - **Accept (met by seed):** confirmed in-diff findings post inline with
   suggestions; rejected/below-threshold/out-of-diff/dismissed findings do not.
 
-### M3 — Prior-state retrieval & idempotency  (partially seeded)
+### M3 — Prior-state retrieval & idempotency (partially seeded)
+
 - Seeded: `derivePriorComments()` (pure, tested), the comment marker design
   (`github/marker.ts`), and the REST half of the adapter. **Remaining: the two
   GraphQL methods** (`getDownvotedCommentIds`, `getResolvedThreadCommentIds`,
@@ -134,6 +137,7 @@ add tests with each milestone.
   logic; add an integration test with a mocked octokit.)
 
 ### M4 — Config file
+
 - Support a repo-level config (`.github/claude-code-review.yml` and/or a
   `REVIEW.md` instruction block injected into the coordinator prompt). Map YAML
   → `PolicyConfig` + `skip_globs`. Keep `policy.ts` defaults as the fallback.
@@ -141,6 +145,7 @@ add tests with each milestone.
   parsing has unit tests.
 
 ### M5 — Eval harness for the prompt layer
+
 - Add `evals/` with a fixture format: `{ diff, expected: VerifiedFinding-ish }`
   cases (true positives, guarded false positives, pre-existing, naming-only
   inferences). Add a scorer that runs the pipeline against each diff and reports
@@ -149,14 +154,16 @@ add tests with each milestone.
   exists; CI can run it (allowing for model variance — report, don't hard-fail).
 
 ### M6 — CI/release for the action itself
+
 - Workflow: on PR, run `typecheck` + `test` + `build` and fail if `dist/` is
   stale (rebuild-and-diff check). On tag, publish `v1` major-version tag.
 - **Accept:** PRs are gated on green tests + fresh `dist/`; `@v1` resolves to
   latest release.
 
 ### M7 — Fork safety & permissions
+
 - Default trigger `pull_request` with `permissions: { contents: read,
-  pull-requests: write }`. Document the `pull_request_target` secret-exposure
+pull-requests: write }`. Document the `pull_request_target` secret-exposure
   risk and gate any such usage. Skip drafts. Handle the no-`patch` case (binary
   files, very large diffs) gracefully.
 - **Accept:** forked-PR behavior is documented and safe by default; large/binary

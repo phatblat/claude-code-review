@@ -9,10 +9,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm test              # vitest — 58 tests, ~2s, no network
+npm test              # vitest — 67 tests, ~2s, no network
 npm run test:watch    # vitest watch mode
 npm run typecheck     # tsc --noEmit (strict mode)
 npm run build         # esbuild → dist/main.js (gitignored; CI builds on release)
+npm run eval          # eval harness — 16 labeled fixtures, reports precision/recall
 npx vitest run test/diffmap.test.ts   # single test file
 ```
 
@@ -47,7 +48,7 @@ Ports & adapters pattern. `executeReview()` depends on a `GitHubPort` interface,
 - `prior-state.ts` — derives open/resolved/dismissed from listed comments
 - `comment-format.ts` — renders badge, evidence, suggestion blocks, summary
 - `payload.ts` — builds `line`+`side: RIGHT` payloads (not deprecated `position`)
-- `config.ts` — parses action env inputs into `PolicyConfig` + skip globs
+- `config.ts` — parses action env inputs and `.github/claude-code-review.yml` into `PolicyConfig` + skip globs (precedence: action inputs > config file > defaults)
 
 ## Key Invariants
 
@@ -70,14 +71,19 @@ Code layer has full unit test coverage. Prompt layer has **no** unit tests by de
 
 Diff position math (`diffmap.ts`) is the classic footgun — position is the offset from the first hunk header counting every line, not the file line number. Heavily tested for this reason.
 
-## Build Plan
+## Milestones
 
-See `AGENT_HANDOFF.md` for the ordered milestone plan (M1–M7). Current status:
+All build milestones are complete (see `AGENT_HANDOFF.md` for original plan):
 
-- **M1** (action metadata) — done, pending `execution_output` field verification (§5A)
-- **M2** (posting entrypoint) — done, 18 tests covering `executeReview()` and all pure helpers
-- **M3** (prior-state / idempotency) — partially seeded; three GraphQL stubs remain in `octokit-adapter.ts`
-- **M4–M7** — not started (config file, eval harness, CI/release, fork safety)
+- **M1** (action metadata) — `action.yml` composite action with configurable inputs
+- **M2** (posting entrypoint) — `executeReview()` via `GitHubPort`, 18 integration tests
+- **M3** (prior-state / idempotency) — GraphQL for 👎 suppression, resolved threads, thread resolution
+- **M4** (config file) — `.github/claude-code-review.yml` with precedence layering
+- **M5** (eval harness) — 16 labeled fixtures, `npm run eval` scores precision/recall
+- **M6** (CI/release) — CI workflow (typecheck+test+build+eval), release workflow (v* tags → dist + v1 tag)
+- **M7** (fork safety) — `pull_request` default, documented `pull_request_target` risks, binary file handling
+
+Remaining: verify `claude-code-action` `execution_output` field name against live docs (§5A in AGENT_HANDOFF.md).
 
 ## Design Reference
 
