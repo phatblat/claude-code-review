@@ -21,6 +21,10 @@ inputs:
     description: "Max turns for the verification step."
     required: false
     default: "20"
+  claude_code_version:
+    description: "Pin Claude Code to a specific version (e.g. '2.1.150'). When set, the binary is cached across runs. Use 'latest' to skip caching."
+    required: false
+    default: "latest"
   skip_globs:
     description: "Comma-separated globs to exclude (generated code, lockfiles, vendored)."
     required: false
@@ -69,13 +73,32 @@ runs:
         EXPLICIT_TOKEN: ${{ inputs.github_token }}
         FALLBACK_TOKEN: ${{ github.token }}
 
-    # 1) Generation pass — combined logic + security reviewer (single session)
+    # 1a) Restore cached Claude Code binary (when version is pinned)
+    - id: cache-claude
+      if: inputs.claude_code_version != 'latest'
+      uses: actions/cache@v5
+      with:
+        path: ~/.claude-code-bin
+        key: claude-code-${{ inputs.claude_code_version }}-${{ runner.os }}-${{ runner.arch }}
+
+    # 1b) Install Claude Code if cache missed (when version is pinned)
+    - id: install-claude
+      if: inputs.claude_code_version != 'latest' && steps.cache-claude.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        npm install -g @anthropic-ai/claude-code@${{ inputs.claude_code_version }}
+        mkdir -p ~/.claude-code-bin
+        cp "$(which claude)" ~/.claude-code-bin/claude
+        echo "Installed Claude Code ${{ inputs.claude_code_version }} to cache"
+
+    # 2) Generation pass — combined logic + security reviewer (single session)
     - id: review
       continue-on-error: true
       uses: anthropics/claude-code-action@v1
       with:
         anthropic_api_key: ${{ inputs.anthropic_api_key }}
         show_full_output: ${{ inputs.show_full_output }}
+        path_to_claude_code_executable: ${{ inputs.claude_code_version != 'latest' && '~/.claude-code-bin/claude' || '' }}
         prompt: |
           You are reviewing PR #${{ github.event.pull_request.number }}
           in ${{ github.repository }} for correctness bugs AND security defects.
@@ -106,19 +129,19 @@ runs:
           --max-turns 10
           --allowedTools "Read,Grep,Glob"
 
-    # 2) Build the posting layer (dist/ is gitignored)
+    # 3) Build the posting layer (dist/ is gitignored)
     - id: build
       shell: bash
       run: cd ${{ github.action_path }} && npm ci --ignore-scripts && npm run build
 
-    # 3) Extract candidates from reviewer output
+    # 4) Extract candidates from reviewer output
     - id: combine
       shell: bash
       run: node ${{ github.action_path }}/dist/main.cjs --extract-candidates
       env:
         LOGIC_OUTPUT_FILE: ${{ steps.review.outputs.execution_file }}
 
-    # 4) Verification pass — dispatch finding-verifier for each candidate
+    # 5) Verification pass — dispatch finding-verifier for each candidate
     - id: verify
       if: steps.combine.outputs.candidate_count != '0'
       continue-on-error: true
@@ -126,6 +149,7 @@ runs:
       with:
         anthropic_api_key: ${{ inputs.anthropic_api_key }}
         show_full_output: ${{ inputs.show_full_output }}
+        path_to_claude_code_executable: ${{ inputs.claude_code_version != 'latest' && '~/.claude-code-bin/claude' || '' }}
         prompt: |
           You are verifying code review candidates for PR
           #${{ github.event.pull_request.number }} in ${{ github.repository }}.
@@ -145,7 +169,7 @@ runs:
           --max-turns ${{ inputs.max_turns }}
           --allowedTools "Read,Grep,Glob,Task"
 
-    # 5) Deterministic posting layer
+    # 6) Deterministic posting layer
     - id: post
       if: steps.combine.outputs.candidate_count != '0'
       shell: bash
@@ -164,7 +188,7 @@ runs:
         CCR_PRIOR_COST_USD: ${{ steps.combine.outputs.cost_usd }}
         CCR_PRIOR_DURATION_MS: ${{ steps.combine.outputs.duration_ms }}
 
-    # 6) Post empty summary when no candidates found
+    # 7) Post empty summary when no candidates found
     - id: post-empty
       if: steps.combine.outputs.candidate_count == '0'
       shell: bash
