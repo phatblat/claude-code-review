@@ -61,10 +61,13 @@ runs:
     - id: save-token
       shell: bash
       run: |
-        echo "::add-mask::$ORIGINAL_TOKEN"
-        echo "token=$ORIGINAL_TOKEN" >> "$GITHUB_OUTPUT"
+        TOKEN="${EXPLICIT_TOKEN:-$FALLBACK_TOKEN}"
+        echo "::add-mask::$TOKEN"
+        echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+        echo "token length: ${#TOKEN}"
       env:
-        ORIGINAL_TOKEN: ${{ inputs.github_token }}
+        EXPLICIT_TOKEN: ${{ inputs.github_token }}
+        FALLBACK_TOKEN: ${{ github.token }}
 
     # 1) Generation pass — combined logic + security reviewer (single session)
     - id: review
