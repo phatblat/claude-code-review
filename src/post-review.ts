@@ -6,7 +6,11 @@
 import { runPipeline, type PipelineOutput } from "./index.js";
 import { derivePriorComments } from "./github/prior-state.js";
 import { toReviewComment, canPostInline } from "./github/payload.js";
-import { renderCommentBody, renderSummary } from "./github/comment-format.js";
+import {
+  renderCommentBody,
+  renderSummary,
+  type ReviewMetrics,
+} from "./github/comment-format.js";
 import type { GitHubPort } from "./github/port.js";
 import type { PolicyConfig } from "./policy.js";
 
@@ -14,6 +18,7 @@ export interface ExecuteOptions {
   verifierStdout: string;
   skipGlobs?: string[];
   policy?: PolicyConfig;
+  metrics?: ReviewMetrics;
 }
 
 export interface ExecuteResult {
@@ -28,11 +33,15 @@ export interface ExecuteResult {
 
 export async function executeReview(
   port: GitHubPort,
-  opts: ExecuteOptions,
+  opts: ExecuteOptions
 ): Promise<ExecuteResult> {
   const [files, rawComments, downvoted, resolvedThreads] = await Promise.all([
-    port.getPrFiles(),
-    port.listReviewComments(),
+    port.getPrFiles().catch((e) => {
+      throw new Error(`getPrFiles: ${e.message}`);
+    }),
+    port.listReviewComments().catch((e) => {
+      throw new Error(`listReviewComments: ${e.message}`);
+    }),
     port.getDownvotedCommentIds(),
     port.getResolvedThreadCommentIds(),
   ]);
@@ -66,7 +75,11 @@ export async function executeReview(
     await port.resolveThread(commentId);
   }
 
-  await port.upsertSummary(renderSummary(summary, extraNitCount));
+  const metrics: ReviewMetrics = {
+    ...opts.metrics,
+    findingCount: plan.create.length + plan.update.length,
+  };
+  await port.upsertSummary(renderSummary(summary, extraNitCount, metrics));
 
   return {
     created,
