@@ -26,6 +26,7 @@ jobs:
         with:
           github_token: ${{ github.token }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_version: "2.1.150"
           skip_globs: "src/gen/**,**/*.lock,vendor/**"
           nit_threshold: "0.85"
           max_nits: "5"
