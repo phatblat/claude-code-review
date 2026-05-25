@@ -22,9 +22,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Save workflow token
+        id: token
+        shell: bash
+        run: |
+          echo "::add-mask::$GITHUB_TOKEN"
+          echo "value=$GITHUB_TOKEN" >> "$GITHUB_OUTPUT"
+          echo "token length: ${#GITHUB_TOKEN}"
       - uses: ./ # or: phatblat/claude-code-review@v1
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ steps.token.outputs.value }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           skip_globs: "src/gen/**,**/*.lock,vendor/**"
           nit_threshold: "0.85"
