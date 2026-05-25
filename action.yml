@@ -57,78 +57,56 @@ outputs:
 runs:
   using: "composite"
   steps:
-    # 1) Generation pass — logic reviewer (exactly one run, no coordinator)
-    - id: logic
+    # 1) Generation pass — combined logic + security reviewer (single session)
+    - id: review
       continue-on-error: true
       uses: anthropics/claude-code-action@v1
       with:
         anthropic_api_key: ${{ inputs.anthropic_api_key }}
         show_full_output: ${{ inputs.show_full_output }}
         prompt: |
-          You find correctness bugs introduced by PR
-          #${{ github.event.pull_request.number }} in ${{ github.repository }}.
-          Bias toward recall — surface anything that might be wrong.
+          You are reviewing PR #${{ github.event.pull_request.number }}
+          in ${{ github.repository }} for correctness bugs AND security defects.
+          Bias toward recall — surface anything that might be wrong or exploitable.
+          A later verification step filters false positives.
 
-          Read the PR diff and changed files. Look for: logic errors,
-          inverted conditions, off-by-one, null/undefined dereferences,
+          Read the PR diff and changed files. Look for:
+
+          LOGIC: inverted conditions, off-by-one, null/undefined dereferences,
           swallowed errors, edge cases, inconsistent state on partial failure.
 
+          SECURITY: SQL/command injection, authorization gaps, secret/PII exposure
+          in logs, unsafe deserialization, SSRF, path traversal, unvalidated input
+          from trust boundaries.
+
           For each candidate, emit ONE JSON object per line (JSONL):
-          {"file":"<path>","line":<int>,"category":"logic","claim":"<falsifiable sentence>","severity":"important|nit"}
+          {"file":"<path>","line":<int>,"category":"logic|security","claim":"<one falsifiable sentence>","severity":"important|nit"}
 
           Rules:
           - line is the NEW-side line number (the + side of the diff)
-          - claim must name the input or condition that triggers the bug
-          - Do NOT flag style, naming, formatting, or missing tests
+          - category is "logic" for correctness bugs, "security" for security defects
+          - claim must be specific and falsifiable — not vague ("might be unsafe")
+          - For security: name the source, sink, and impact
+          - Do NOT flag style, naming, formatting, missing tests, or defense-in-depth
           - Output ONLY JSONL lines — no prose, no markdown, no summary
         claude_args: >-
           --model ${{ inputs.model }}
-          --max-turns 8
+          --max-turns 10
           --allowedTools "Read,Grep,Glob"
 
-    # 2) Generation pass — security reviewer (exactly one run, no coordinator)
-    - id: security
-      continue-on-error: true
-      uses: anthropics/claude-code-action@v1
-      with:
-        anthropic_api_key: ${{ inputs.anthropic_api_key }}
-        show_full_output: ${{ inputs.show_full_output }}
-        prompt: |
-          You find security defects introduced by PR
-          #${{ github.event.pull_request.number }} in ${{ github.repository }}.
-          Bias toward recall — surface anything that might be exploitable.
-
-          Read the PR diff and changed files. Look for: SQL/command injection,
-          authorization gaps, secret/PII exposure in logs, unsafe deserialization,
-          SSRF, path traversal, unvalidated input from trust boundaries.
-
-          For each candidate, emit ONE JSON object per line (JSONL):
-          {"file":"<path>","line":<int>,"category":"security","claim":"<the input, the sink, and the impact>","severity":"important|nit"}
-
-          Rules:
-          - line is the NEW-side line number (the + side of the diff)
-          - claim must name source, sink, and impact — not generic warnings
-          - Do NOT flag defense-in-depth without a concrete exploit path
-          - Output ONLY JSONL lines — no prose, no markdown, no summary
-        claude_args: >-
-          --model ${{ inputs.model }}
-          --max-turns 8
-          --allowedTools "Read,Grep,Glob"
-
-    # 3) Build the posting layer (dist/ is gitignored)
+    # 2) Build the posting layer (dist/ is gitignored)
     - id: build
       shell: bash
       run: cd ${{ github.action_path }} && npm ci --ignore-scripts && npm run build
 
-    # 4) Combine candidates from both reviewers
+    # 3) Extract candidates from reviewer output
     - id: combine
       shell: bash
       run: node ${{ github.action_path }}/dist/main.cjs --extract-candidates
       env:
-        LOGIC_OUTPUT_FILE: ${{ steps.logic.outputs.execution_file }}
-        SECURITY_OUTPUT_FILE: ${{ steps.security.outputs.execution_file }}
+        LOGIC_OUTPUT_FILE: ${{ steps.review.outputs.execution_file }}
 
-    # 5) Verification pass — dispatch finding-verifier for each candidate
+    # 4) Verification pass — dispatch finding-verifier for each candidate
     - id: verify
       if: steps.combine.outputs.candidate_count != '0'
       continue-on-error: true
@@ -155,7 +133,7 @@ runs:
           --max-turns ${{ inputs.max_turns }}
           --allowedTools "Read,Grep,Glob,Task"
 
-    # 6) Deterministic posting layer
+    # 5) Deterministic posting layer
     - id: post
       if: steps.combine.outputs.candidate_count != '0'
       shell: bash
@@ -174,7 +152,7 @@ runs:
         CCR_PRIOR_COST_USD: ${{ steps.combine.outputs.cost_usd }}
         CCR_PRIOR_DURATION_MS: ${{ steps.combine.outputs.duration_ms }}
 
-    # 7) Post empty summary when no candidates found
+    # 6) Post empty summary when no candidates found
     - id: post-empty
       if: steps.combine.outputs.candidate_count == '0'
       shell: bash
