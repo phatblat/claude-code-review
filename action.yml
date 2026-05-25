@@ -57,6 +57,15 @@ outputs:
 runs:
   using: "composite"
   steps:
+    # 0) Capture the workflow token before claude-code-action's OIDC replaces it
+    - id: save-token
+      shell: bash
+      run: |
+        echo "::add-mask::$ORIGINAL_TOKEN"
+        echo "token=$ORIGINAL_TOKEN" >> "$GITHUB_OUTPUT"
+      env:
+        ORIGINAL_TOKEN: ${{ inputs.github_token }}
+
     # 1) Generation pass — combined logic + security reviewer (single session)
     - id: review
       continue-on-error: true
@@ -139,7 +148,7 @@ runs:
       shell: bash
       run: node ${{ github.action_path }}/dist/main.cjs
       env:
-        GITHUB_TOKEN: ${{ inputs.github_token }}
+        CCR_GITHUB_TOKEN: ${{ steps.save-token.outputs.token }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
         REPO: ${{ github.repository }}
         VERIFIER_OUTPUT_FILE: ${{ steps.verify.outputs.execution_file }}
@@ -158,7 +167,7 @@ runs:
       shell: bash
       run: node ${{ github.action_path }}/dist/main.cjs
       env:
-        GITHUB_TOKEN: ${{ inputs.github_token }}
+        CCR_GITHUB_TOKEN: ${{ steps.save-token.outputs.token }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
         REPO: ${{ github.repository }}
         SKIP_GLOBS: ${{ inputs.skip_globs }}
