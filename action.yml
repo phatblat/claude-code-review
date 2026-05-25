@@ -111,6 +111,7 @@ runs:
 
     # 2) Generation pass — combined logic + security reviewer (single session)
     - id: review
+      continue-on-error: true
       uses: anthropics/claude-code-action@v1
       with:
         anthropic_api_key: ${{ inputs.anthropic_api_key }}
@@ -121,6 +122,10 @@ runs:
           in ${{ github.repository }} for correctness bugs AND security defects.
           Bias toward recall — surface anything that might be wrong or exploitable.
           A later verification step filters false positives.
+
+          IMPORTANT: You are in a GitHub Actions checkout. HEAD is a detached merge
+          commit. To get the PR diff, run: git diff origin/main...HEAD
+          Do NOT use bare "main" — only "origin/main" exists here.
 
           Read the PR diff and changed files. Look for:
 
@@ -143,8 +148,9 @@ runs:
           - Output ONLY JSONL lines — no prose, no markdown, no summary
         claude_args: >-
           --model ${{ inputs.model }}
-          --max-turns 10
-          --allowedTools "Read,Grep,Glob"
+          --max-turns 15
+          --permission-mode bypassPermissions
+          --allowedTools "Bash,Read,Grep,Glob"
 
     # 3) Build the posting layer (dist/ is gitignored)
     - id: build

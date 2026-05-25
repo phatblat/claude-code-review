@@ -110,7 +110,7 @@
 ```
  Sessions: 2 claude-code-action calls
  ─────────────────────────────────────
- 1. Combined reviewer   (max 10 turns, Read/Grep/Glob)
+ 1. Combined reviewer   (max 15 turns, Bash/Read/Grep/Glob)
     Logic + security in a single pass
  2. Verify coordinator  (max 20 turns, Read/Grep/Glob/Task)
     └─ N finding-verifier subagents via Task tool
