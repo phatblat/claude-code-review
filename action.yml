@@ -65,13 +65,20 @@ runs:
     - id: save-token
       shell: bash
       run: |
-        TOKEN="${EXPLICIT_TOKEN:-$FALLBACK_TOKEN}"
+        echo "input token length: ${#INPUT_TOKEN}"
+        echo "context token length: ${#CONTEXT_TOKEN}"
+        echo "env GITHUB_TOKEN length: ${#GITHUB_TOKEN}"
+        TOKEN="${INPUT_TOKEN:-$CONTEXT_TOKEN}"
+        if [ ${#TOKEN} -eq 0 ]; then
+          echo "::warning::No token from input or context, using GITHUB_TOKEN env"
+          TOKEN="$GITHUB_TOKEN"
+        fi
         echo "::add-mask::$TOKEN"
         echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
-        echo "token length: ${#TOKEN}"
+        echo "selected token length: ${#TOKEN}"
       env:
-        EXPLICIT_TOKEN: ${{ inputs.github_token }}
-        FALLBACK_TOKEN: ${{ github.token }}
+        INPUT_TOKEN: ${{ inputs.github_token }}
+        CONTEXT_TOKEN: ${{ github.token }}
 
     # 1a) Resolve cache path (~ doesn't expand in with: blocks)
     - id: claude-path

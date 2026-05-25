@@ -56,6 +56,17 @@ export class OctokitGitHubPort implements GitHubPort {
   }
 
   async getDownvotedCommentIds(): Promise<Set<number>> {
+    try {
+      return await this._getDownvotedCommentIds();
+    } catch (err) {
+      core.warning(
+        `getDownvotedCommentIds failed (GraphQL permission?): ${err instanceof Error ? err.message : err}`
+      );
+      return new Set();
+    }
+  }
+
+  private async _getDownvotedCommentIds(): Promise<Set<number>> {
     const comments = await this.listReviewComments();
     if (comments.length === 0) return new Set();
 
@@ -96,6 +107,17 @@ export class OctokitGitHubPort implements GitHubPort {
   private threadIdByCommentId = new Map<number, string>();
 
   async getResolvedThreadCommentIds(): Promise<Set<number>> {
+    try {
+      return await this._getResolvedThreadCommentIds();
+    } catch (err) {
+      core.warning(
+        `getResolvedThreadCommentIds failed (GraphQL permission?): ${err instanceof Error ? err.message : err}`
+      );
+      return new Set();
+    }
+  }
+
+  private async _getResolvedThreadCommentIds(): Promise<Set<number>> {
     const resolved = new Set<number>();
     let cursor: string | null = null;
 
@@ -180,12 +202,18 @@ export class OctokitGitHubPort implements GitHubPort {
       );
       return;
     }
-    const mutation = `mutation($threadId: ID!) {
-      resolveReviewThread(input: { threadId: $threadId }) {
-        thread { id isResolved }
-      }
-    }`;
-    await this.octokit.graphql(mutation, { threadId });
+    try {
+      const mutation = `mutation($threadId: ID!) {
+        resolveReviewThread(input: { threadId: $threadId }) {
+          thread { id isResolved }
+        }
+      }`;
+      await this.octokit.graphql(mutation, { threadId });
+    } catch (err) {
+      core.warning(
+        `resolveThread(${commentId}) failed (GraphQL permission?): ${err instanceof Error ? err.message : err}`
+      );
+    }
   }
 
   async upsertSummary(body: string): Promise<void> {

@@ -138,19 +138,28 @@ async function main(): Promise<void> {
   const priorCost = Number(process.env.CCR_PRIOR_COST_USD || "0");
   const priorDuration = Number(process.env.CCR_PRIOR_DURATION_MS || "0");
 
-  const result = await executeReview(port, {
-    verifierStdout,
-    skipGlobs,
-    policy,
-    metrics: {
-      model: process.env.CCR_MODEL,
-      costUsd: priorCost + verifyCost,
-      durationMs: priorDuration + verifyDuration,
-      commitSha: headSha,
-      timestamp:
-        new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC",
-    },
-  });
+  core.info("calling executeReview...");
+  let result;
+  try {
+    result = await executeReview(port, {
+      verifierStdout,
+      skipGlobs,
+      policy,
+      metrics: {
+        model: process.env.CCR_MODEL,
+        costUsd: priorCost + verifyCost,
+        durationMs: priorDuration + verifyDuration,
+        commitSha: headSha,
+        timestamp:
+          new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC",
+      },
+    });
+  } catch (err) {
+    core.setFailed(
+      `executeReview failed: ${err instanceof Error ? err.stack : err}`
+    );
+    return;
+  }
 
   if (result.parseErrors.length > 0) {
     core.warning(

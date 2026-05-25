@@ -24,7 +24,7 @@ jobs:
           fetch-depth: 0
       - uses: ./ # or: phatblat/claude-code-review@v1
         with:
-          github_token: ${{ github.token }}
+          github_token: ${{ env.CCR_GITHUB_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_code_version: "2.1.150"
           skip_globs: "src/gen/**,**/*.lock,vendor/**"
