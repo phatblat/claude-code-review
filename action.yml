@@ -111,7 +111,6 @@ runs:
 
     # 2) Generation pass — combined logic + security reviewer (single session)
     - id: review
-      continue-on-error: true
       uses: anthropics/claude-code-action@v1
       with:
         anthropic_api_key: ${{ inputs.anthropic_api_key }}
