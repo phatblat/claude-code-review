@@ -108,17 +108,18 @@
 ## Sessions
 
 ```
- Sessions: 3 claude-code-action calls
+ Sessions: 2 claude-code-action calls
  ─────────────────────────────────────
- 1. Logic reviewer     (max 8 turns, Read/Grep/Glob)
- 2. Security reviewer  (max 8 turns, Read/Grep/Glob)
- 3. Verify coordinator (max 20 turns, Read/Grep/Glob/Task)
+ 1. Combined reviewer   (max 10 turns, Read/Grep/Glob)
+    Logic + security in a single pass
+ 2. Verify coordinator  (max 20 turns, Read/Grep/Glob/Task)
     └─ N finding-verifier subagents via Task tool
 ```
 
-Each reviewer runs as a standalone `claude-code-action` step — no coordinator
-can re-dispatch them. The verification coordinator only has access to the Task
-tool for dispatching `finding-verifier` subagents, one per candidate.
+The combined reviewer runs as a standalone `claude-code-action` step — it
+covers both logic and security in one pass, reading files once. The
+verification coordinator only has access to the Task tool for dispatching
+`finding-verifier` subagents, one per candidate.
 
 All steps use `continue-on-error: true` so partial results are still posted
 if a step hits its turn limit.
