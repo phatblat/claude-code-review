@@ -73,23 +73,34 @@ runs:
         EXPLICIT_TOKEN: ${{ inputs.github_token }}
         FALLBACK_TOKEN: ${{ github.token }}
 
-    # 1a) Restore cached Claude Code binary (when version is pinned)
+    # 1a) Resolve cache path (~ doesn't expand in with: blocks)
+    - id: claude-path
+      if: inputs.claude_code_version != 'latest'
+      shell: bash
+      run: |
+        CACHE_DIR="$HOME/.claude-code-bin"
+        echo "dir=$CACHE_DIR" >> "$GITHUB_OUTPUT"
+        echo "exe=$CACHE_DIR/claude" >> "$GITHUB_OUTPUT"
+
+    # 1b) Restore cached Claude Code binary (when version is pinned)
     - id: cache-claude
       if: inputs.claude_code_version != 'latest'
       uses: actions/cache@v5
       with:
-        path: ~/.claude-code-bin
+        path: ${{ steps.claude-path.outputs.dir }}
         key: claude-code-${{ inputs.claude_code_version }}-${{ runner.os }}-${{ runner.arch }}
 
-    # 1b) Install Claude Code if cache missed (when version is pinned)
+    # 1c) Install Claude Code if cache missed (when version is pinned)
     - id: install-claude
       if: inputs.claude_code_version != 'latest' && steps.cache-claude.outputs.cache-hit != 'true'
       shell: bash
       run: |
         npm install -g @anthropic-ai/claude-code@${{ inputs.claude_code_version }}
-        mkdir -p ~/.claude-code-bin
-        cp "$(which claude)" ~/.claude-code-bin/claude
-        echo "Installed Claude Code ${{ inputs.claude_code_version }} to cache"
+        mkdir -p "${{ steps.claude-path.outputs.dir }}"
+        CLAUDE_BIN="$(which claude)"
+        cp "$CLAUDE_BIN" "${{ steps.claude-path.outputs.exe }}"
+        chmod +x "${{ steps.claude-path.outputs.exe }}"
+        echo "Installed Claude Code ${{ inputs.claude_code_version }} to ${{ steps.claude-path.outputs.exe }}"
 
     # 2) Generation pass — combined logic + security reviewer (single session)
     - id: review
@@ -98,7 +109,7 @@ runs:
       with:
         anthropic_api_key: ${{ inputs.anthropic_api_key }}
         show_full_output: ${{ inputs.show_full_output }}
-        path_to_claude_code_executable: ${{ inputs.claude_code_version != 'latest' && '~/.claude-code-bin/claude' || '' }}
+        path_to_claude_code_executable: ${{ steps.claude-path.outputs.exe }}
         prompt: |
           You are reviewing PR #${{ github.event.pull_request.number }}
           in ${{ github.repository }} for correctness bugs AND security defects.
@@ -149,7 +160,7 @@ runs:
       with:
         anthropic_api_key: ${{ inputs.anthropic_api_key }}
         show_full_output: ${{ inputs.show_full_output }}
-        path_to_claude_code_executable: ${{ inputs.claude_code_version != 'latest' && '~/.claude-code-bin/claude' || '' }}
+        path_to_claude_code_executable: ${{ steps.claude-path.outputs.exe }}
         prompt: |
           You are verifying code review candidates for PR
           #${{ github.event.pull_request.number }} in ${{ github.repository }}.
